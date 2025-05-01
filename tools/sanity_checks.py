@@ -152,8 +152,25 @@ class TestReleases(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Take list of git tags
-        stdout = subprocess.check_output(['git', 'tag'])
-        cls.tags = [t.strip() for t in stdout.decode().splitlines()]
+        stdout = subprocess.check_output(
+            ['git', 'tag', '--format=%(refname:strip=2) %(creatordate:unix)']
+        )
+        # tag name -> Unix timestamp
+        cls.tags = {
+            kv[0]: int(kv[1])
+            for kv in (l.split(' ', 1) for l in stdout.decode().splitlines())
+        }
+
+        # If we're running on a PR in GitHub Actions, get the timestamp of
+        # the synthetic merge commit
+        commit_timestamp, commit_subject = subprocess.check_output(
+            ['git', 'log', '-1', '--format=%ct %s']
+        ).decode().strip().split(' ', 1)
+        cls.pr_update_timestamp = (
+            int(commit_timestamp)
+            if re.match('Merge [0-9a-f]+ into [0-9a-f]+$', commit_subject)
+            else None
+        )
 
         try:
             fn = 'releases.json'
@@ -171,11 +188,15 @@ class TestReleases(unittest.TestCase):
         cls.timeout_multiplier = float(os.environ.get('TEST_TIMEOUT_MULTIPLIER', 1))
 
     def test_releases_json(self):
-        # All tags must be in the releases file
-        for t in self.tags:
+        # All tags must be in the releases file, except any created after the
+        # PR was pushed
+        for t, timestamp in self.tags.items():
             name, version = t.rsplit('_', 1)
             # Those are imported tags from v1, they got renamed to sqlite3 and libjpeg-turbo.
             if name in {'sqlite', 'libjpeg'}:
+                continue
+            if self.pr_update_timestamp and self.pr_update_timestamp < timestamp:
+                print(f'Ignoring tag {t} created after PR update')
                 continue
             self.assertIn(name, self.releases)
             self.assertIn(version, self.releases[name]['versions'], f'for {name}')
