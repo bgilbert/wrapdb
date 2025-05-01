@@ -166,6 +166,7 @@ class TestReleases(unittest.TestCase):
         commit_timestamp, commit_subject = subprocess.check_output(
             ['git', 'log', '-1', '--format=%ct %s']
         ).decode().strip().split(' ', 1)
+        print(commit_subject)
         cls.pr_update_timestamp = (
             int(commit_timestamp)
             if re.match('Merge [0-9a-f]+ into [0-9a-f]+$', commit_subject)
