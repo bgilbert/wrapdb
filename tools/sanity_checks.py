@@ -426,7 +426,7 @@ class TestReleases(unittest.TestCase):
                         f'Version {version} not found in {source_url}')
         return True
 
-    def check_new_release(self, name: str, builddir: str = '_build', deps=None, progs=None):
+    def check_new_release(self, name: str, builddir: str = '_build', deps=None, progs=None) -> None:
         print() # Ensure output starts from an empty line (we're running under unittest).
         if is_msys():
             system = 'msys2'
@@ -653,16 +653,13 @@ meson format --configuration meson.format --inplace {unformatted_files_for_comma
                 if f'{name}_{info["versions"][0]}' not in self.tags:
                     self.report_meson_version_deps(name)
 
-    def report_meson_version_deps(self, name: str, builddir: str = '_build'):
-        print() # Ensure output starts from an empty line (we're running under unittest).
-
+    def report_meson_version_deps(self, name: str, builddir: str = '_build') -> None:
         wrap = configparser.ConfigParser(interpolation=None)
         wrap.read(f'subprojects/{name}.wrap', encoding='utf-8')
         patch_dir = self.get_patch_path(wrap['wrap-file'])
         if not patch_dir:
             # only check projects maintained downstream
             return
-        source_dir = Path('subprojects', wrap['wrap-file']['directory'])
 
         meson_file = patch_dir / 'meson.build'
         meson_file_line = None
@@ -676,20 +673,17 @@ meson format --configuration meson.format --inplace {unformatted_files_for_comma
         meson_file_line = meson_file_line or 0
 
         try:
-            version_request = json.loads(
-                subprocess.check_output(
-                    ['meson', 'rewrite', 'kwargs', 'info', 'project', '/'],
-                    cwd=patch_dir,
-                )
-            )['kwargs']['project#/'].get('meson_version')
-        except subprocess.CalledProcessError:
-            version_request = None
-        if version_request:
-            version_request = version_request.replace(' ', '')
+            severity, title, message = self.get_meson_version_deps(name, builddir, wrap)
+        except Exception:
+            severity = 'error'
+            title = 'Minimum Meson version'
+            message = 'Could not determine minimum Meson version'
+        finally:
+            print(f'\n::{severity} file={meson_file},line={meson_file_line + 1},title={title}::{message}\n')
 
-        ci = self.ci_config.get(name, {})
-        options = ['-Dpython.install_env=auto', f'-Dwraps={name}']
-        options += [f'-D{o}' for o in ci.get('build_options', [])]
+    def get_meson_version_deps(self, name: str, builddir: str, wrap: configparser.ConfigParser) -> tuple[str, str, str]:
+        print() # Ensure output starts from an empty line (we're running under unittest).
+
         # purge any extra options from a previous test_releases() run
         if Path(builddir).exists():
             shutil.rmtree(builddir)
@@ -700,9 +694,26 @@ meson format --configuration meson.format --inplace {unformatted_files_for_comma
         subprocess.check_call(
             ['meson', 'subprojects', 'download', name]
         )
+
+        source_dir = Path('subprojects', wrap['wrap-file']['directory'])
+        try:
+            version_request = json.loads(
+                subprocess.check_output(
+                    ['meson', 'rewrite', 'kwargs', 'info', 'project', '/'],
+                    cwd=source_dir,
+                )
+            )['kwargs']['project#/'].get('meson_version')
+        except subprocess.CalledProcessError:
+            version_request = None
+        if version_request:
+            version_request = version_request.replace(' ', '')
+
+        ci = self.ci_config.get(name, {})
+        options = ['-Dpython.install_env=auto', f'-Dwraps={name}']
+        options += [f'-D{o}' for o in ci.get('build_options', [])]
         try:
             subprocess.check_call(
-                ['meson', 'rewrite', 'kwargs', 'set', 'project', '/', 'meson_version', '>=0'],
+                ['meson', 'zz' if name == 'gee' else 'rewrite', 'kwargs', 'set', 'project', '/', 'meson_version', '>=0'],
                 cwd=source_dir,
             )
             # assume any package dependencies have already been installed
@@ -735,9 +746,11 @@ meson format --configuration meson.format --inplace {unformatted_files_for_comma
         else:
             message = 'No versioned features found.'
             min_version = '0'
-        title = f'Minimum Meson version is {min_version}'
-        severity = 'warning' if (version_request or '>=0') != f'>={min_version}' else 'notice'
-        print(f'::{severity} file={meson_file},line={meson_file_line + 1},title={title}::{message}\n')
+        return (
+            'warning' if (version_request or '>=0') != f'>={min_version}' else 'notice',
+            f'Minimum Meson version is {min_version}',
+            message
+        )
 
 
 if __name__ == '__main__':
