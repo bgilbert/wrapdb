@@ -12,6 +12,7 @@ project(
   default_options: ['c_std=c11', 'optimization=2'],
 )
 
+
 if get_option('b_lto')
   error('LTO cannot be used with runtime CPU detection')
 endif

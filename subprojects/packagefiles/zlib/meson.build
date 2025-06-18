@@ -3,8 +3,9 @@ project(
   'c',
   version: '1.3.1',
   license: 'Zlib',
-  meson_version: '>=0.49.0',
+  meson_version: '>=0.48.0',
 )
+
 
 cc = meson.get_compiler('c')
 

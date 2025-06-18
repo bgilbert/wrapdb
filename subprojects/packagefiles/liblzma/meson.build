@@ -3,8 +3,7 @@ project(
   'liblzma',
   'c',
   version: '5.2.12',
-  license: 'pd/lgpl2/gpl2/gpl3',
-  meson_version: '>=0.49.0',
+  license: 'BSD-3-Clause',  # not really
 )
 
 add_project_arguments(

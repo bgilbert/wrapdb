@@ -3,6 +3,7 @@ project(
   'c',
   'vala',
   version: '0.20.6',
+  license: 'MIT',  # not really
 )
 api_version = '0.8'
 

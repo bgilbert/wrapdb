@@ -1412,6 +1412,9 @@
       "x-plane-sdk:cpp=enabled"
     ]
   },
+  "zlib": {
+    "fatal_warnings": false
+  },
   "zycore": {
     "build_options": [
       "zycore:examples=enabled",
