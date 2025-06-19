@@ -10,8 +10,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  initial:
+    name: Initial checks
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.cache-key }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install python3-pip
+          python3 -m pip install license-expression
+          python3 -m pip install --pre meson
+
+      - name: Calculate cache key
+        id: cache-key
+        run: echo "cache-key=packagecache-$(tools/download_sources.py --cache-key)" >> $GITHUB_OUTPUT
+
+      - name: Cache sources
+        uses: actions/cache@v4
+        with:
+          key: ${{ steps.cache-key.outputs.cache-key }}
+          path: subprojects/packagecache
+          enableCrossOsArchive: true
+
+      - name: Download sources
+        id: download
+        run: tools/download_sources.py
+
   Ubuntu:
     runs-on: ${{ matrix.platform == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    needs: initial
     strategy:
       fail-fast: false
       matrix:
@@ -28,12 +61,21 @@ jobs:
           python3 -m pip install license-expression
           python3 -m pip install --pre meson
 
+      - name: Cache sources
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.initial.outputs.cache-key }}
+          path: subprojects/packagecache
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
       - name: Sanity Checks
         run: |
           ./tools/fake_tty.py ./tools/sanity_checks.py
 
   Alpine:
     runs-on: ${{ startsWith(matrix.platform, 'x86') && 'ubuntu-latest' || 'ubuntu-24.04-arm' }}
+    needs: initial
     strategy:
       fail-fast: false
       matrix:
@@ -56,6 +98,14 @@ jobs:
         if: matrix.platform == 'armv7'
         run: sudo update-binfmts --disable qemu-arm
 
+      - name: Cache sources
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.initial.outputs.cache-key }}
+          path: subprojects/packagecache
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
       - name: Sanity Checks
         env:
           CC: clang
@@ -74,6 +124,7 @@ jobs:
 
   VisualStudio:
     runs-on: windows-latest
+    needs: initial
     strategy:
       fail-fast: false
       matrix:
@@ -103,12 +154,22 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{matrix.platform}}
+
+      - name: Cache sources
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.initial.outputs.cache-key }}
+          path: subprojects/packagecache
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
       - name: Sanity Checks
         run: |
           python tools/sanity_checks.py
 
   VisualStudio-clang-cl:
     runs-on: windows-latest
+    needs: initial
     steps:
       - uses: actions/checkout@v4
         with:
@@ -123,6 +184,14 @@ jobs:
           python -m pip install license-expression
           python -m pip install --pre meson
 
+      - name: Cache sources
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.initial.outputs.cache-key }}
+          path: subprojects/packagecache
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
       - uses: ilammy/msvc-dev-cmd@v1
       - name: Sanity Checks
         env:
@@ -133,6 +202,7 @@ jobs:
 
   MSYS2:
     runs-on: windows-latest
+    needs: initial
     strategy:
       fail-fast: false
       matrix:
@@ -166,6 +236,14 @@ jobs:
           python -m pip install license-expression
           python -m pip install --pre meson
 
+      - name: Cache sources
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.initial.outputs.cache-key }}
+          path: subprojects/packagecache
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
       - name: Sanity Checks
         shell: msys2 {0}
         run: |
@@ -173,6 +251,7 @@ jobs:
 
   MacOS:
     runs-on: ${{ matrix.platform == 'arm64' && 'macos-14' || 'macos-13' }}
+    needs: initial
     strategy:
       fail-fast: false
       matrix:
@@ -193,6 +272,14 @@ jobs:
           brew install ninja
           python3 -m pip install license-expression
           python3 -m pip install --pre meson
+
+      - name: Cache sources
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.initial.outputs.cache-key }}
+          path: subprojects/packagecache
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
 
       - name: Sanity Checks
         run: |
