@@ -215,6 +215,7 @@ class TestReleases(unittest.TestCase):
         system = platform.system().lower()
         cls.skip = T.cast(T.List[str], cls.ci_config[f'broken_{system}'])
         cls.fatal_warnings = os.environ.get('TEST_FATAL_WARNINGS', 'yes') == 'yes'
+        cls.skip_build = os.environ.get('TEST_SKIP_BUILD') == 'yes'
         cls.timeout_multiplier = float(os.environ.get('TEST_TIMEOUT_MULTIPLIER', 1))
 
     def test_releases_json(self):
@@ -333,12 +334,13 @@ class TestReleases(unittest.TestCase):
                     if i == 0 and t not in self.tags:
                         with self.subTest(step='check_new_release'):
                             has_new_releases = True
-                            self.check_new_release(name, deps=deps, progs=progs)
-                            with self.subTest(f'If this works now, please remove it from broken_{platform.system().lower()}!'):
-                                self.assertNotIn(name, self.skip)
-                            self.check_meson_version(name, ver, patch_path)
-                            if patch_path:
-                                self.check_license(Path('subprojects') / wrap_section['directory'])
+                            if not self.skip_build:
+                                self.check_new_release(name, deps=deps, progs=progs)
+                                with self.subTest(f'If this works now, please remove it from broken_{platform.system().lower()}!'):
+                                    self.assertNotIn(name, self.skip)
+                        self.check_meson_version(name, ver, patch_path)
+                        if patch_path:
+                            self.check_license(name, Path('subprojects') / wrap_section['directory'])
                     else:
                         with self.subTest(step='version is tagged'):
                             self.assertIn(t, self.tags)
@@ -590,8 +592,13 @@ class TestReleases(unittest.TestCase):
         )
         return res.returncode == 0
 
-    def check_license(self, dir: Path) -> None:
+    def check_license(self, name: str, dir: Path) -> None:
         with self.subTest(step='check_license'):
+            if not dir.exists():
+                # build has not run and unpacked the source; do that
+                subprocess.check_call(
+                    ['meson', 'subprojects', 'download', name]
+                )
             try:
                 project_json = subprocess.check_output(
                     ['meson', 'rewrite', 'kwargs', 'info', 'project', '/'],

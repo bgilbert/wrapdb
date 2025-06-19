@@ -42,6 +42,12 @@ jobs:
         id: download
         run: tools/download_sources.py
 
+      - name: Quick checks
+        env:
+          TEST_SKIP_BUILD: yes
+        run: |
+          ./tools/fake_tty.py ./tools/sanity_checks.py
+
   Ubuntu:
     runs-on: ${{ matrix.platform == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     needs: initial
