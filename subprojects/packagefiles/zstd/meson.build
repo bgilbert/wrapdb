@@ -11,7 +11,7 @@
 project(
   'zstd',
   ['c', 'cpp'],
-  license: ['BSD', 'GPLv2'],
+  license: 'BSD-3-Clause OR GPL-2.0-or-later',
   default_options: [
     # There shouldn't be any need to force a C standard convention for zstd
     # but in case one would want that anyway, this can be done here.
@@ -26,6 +26,7 @@ project(
   version: '1.5.7',
   meson_version: '>=0.50.0',
 )
+
 
 cc = meson.get_compiler('c')
 cxx = meson.get_compiler('cpp')
