@@ -7,4 +7,4 @@ patch_directory = google-benchmark
 
 [provide]
 benchmark = google_benchmark_dep
-benchmark-main = google_benchmark_main_dep
+benchmark_main = google_benchmark_main_dep
