@@ -205,7 +205,8 @@ def run(repo: T.Optional[str], token: T.Optional[str]) -> None:
         if latest_tag not in tags:
             CreateRelease(repo, token, latest_tag)
     if repo and token:
-        subprocess.check_call(['git', 'push', 'origin', RELEASE_BRANCH])
+        cmd = ['git', 'push', 'origin', f'HEAD:{RELEASE_BRANCH}']
+        subprocess.check_call(cmd)
 
 if __name__ == '__main__':
     # Support local testing when passing no arguments
