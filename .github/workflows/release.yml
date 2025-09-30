@@ -30,6 +30,8 @@ jobs:
   # it requires a Personal Access Token. Instead clone meson and do it ourself.
   # This job is copied from Meson's workflows.
   update_website:
+    # only rebuild the site after we've updated releases.json
+    needs: create_release
     env:
       HAS_SSH_KEY: ${{ secrets.WEBSITE_PRIV_KEY != '' }}
     runs-on: ubuntu-latest
