@@ -205,6 +205,7 @@ def run(repo: T.Optional[str], token: T.Optional[str]) -> None:
         if latest_tag not in tags:
             CreateRelease(repo, token, latest_tag)
     if repo and token:
+        sys.stdout.flush()
         cmd = ['git', 'push', 'origin', f'HEAD:{RELEASE_BRANCH}']
         subprocess.check_call(cmd)
 
