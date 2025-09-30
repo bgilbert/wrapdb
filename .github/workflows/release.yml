@@ -16,6 +16,7 @@ concurrency:
 jobs:
   create_release:
     runs-on: ubuntu-latest
+    environment: released
     permissions:
       contents: write
     steps:
