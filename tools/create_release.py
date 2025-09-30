@@ -28,7 +28,7 @@ import json
 from pathlib import Path
 from utils import CIConfig, Releases, is_ci, is_debianlike, read_wrap, write_wrap
 
-RELEASE_BRANCH = 'released'
+RELEASE_BRANCH = 'release'
 
 class CreateRelease:
     def __init__(self, repo: T.Optional[str], token: T.Optional[str], tag: str):
